@@ -1,0 +1,539 @@
+---
+title: "Analysis of Animal Migration in R: <br/>
+the `migrateR` Package"
+author: "Derek Spitz"
+date: "`r Sys.Date()`"
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{migrateR: Analysis of Animal Migration in R}
+  %\VignetteEngine{knitr::rmarkdown}
+  \usepackage[utf8]{inputenc}
+---
+***
+```{r setup, include=FALSE}
+require(migrateR)
+```
+```{r, fig.width = 7.5, fig.height = 3.5, echo=FALSE, warning=F}
+source("/users/jacobim/documents/hal/packages/migrater/vignettes/elvnsdmodelsplot.r")
+``` 
+  
+Conceptual illustration of two families of movement models fit to Net Squared Displacement (NSD) and elevation, respectively. 
+Elevation models can represent upward or downward movement and so can be seen as above or rotated $180^o$ around the x-axis. 
+The structure of each model is described fully under ["Models of Animal Movement"](#b.-models-of-animal-movement), below.
+  
+***
+  
+##Contents
+1. **[Introduction](#introduction)**
+    a. *[Data Formatting](#a.-data-formatting)*
+    b. *[Models of Animal Movement](#b.-models-of-animal-movement)*
+2. **[Fitting Movement Models](#fitting-movement-models)**
+    a. *[Checking Convergence](#a.-checking-convergence)*
+    b. *[Starting Estimates and Constraints](#b.-starting-estimates-and-constraints)*
+    c. *[Visual Checks](#b.-visual-checks)*
+3. **[Classifying Movement](#classifying-movement)**
+    a. *[Constraining Model Seleciton](#a.-constraining-model-selection)*
+4. **[Quantifying Movement](#quantifying-movement)**
+    a. *[Derived Estimates](#a.-derived-estimates)*
+    b. *[Start and End of Movement](#b.-start-and-end-of-movement)*
+5. **[Advanced Options](#advanced-options)**
+    a. *[Omitting Points](#a.-omitting-points)*
+    b. *[Sensitivity to Starting Coordinates](#b.-sensitivity-to-starting-coordinates)*
+    c. *[Comparing Timing Parameters Across Bursts](#c.-comparing-timing-parameters-across-bursts)*
+    d. *[Class "mvmt"](#d.-class-mvmt)*
+6. **[References](#references)**
+
+
+***
+  
+## 1. Introduction
+
+The following vignette is structured to illustrate the functions and workflow of the `migrateR` package. 
+This package is designed to improve model-driven classification and quantification of animal movement by:    
+
+- Refining existing movement models
+- Adapting these models to allow treatment of vertical (i.e. altitudinal and diel) migration
+- Simplifying the application and evaluation of these methods
+
+This vignette does not, however, include a full explication of model-driven movement classification, instead assuming that this is a topic with which you are already familiar.
+If this is your first time encountering this approach or if the underlying concepts remain unclear, we strongly recommend you start by reading (or reviewing) [Bunnefeld et al.](#references)  (2011; hereafter "Bunnefeld et al.")  before continuing to the rest of this vignette.
+A brief description of these models is also included at the end of this section ([Models of Animal Movement](#b.-models-of-animal-movement)).
+
+### a. Data Formatting
+The first challenge in using this package is appropriately formatting your data.
+`migrateR` relies on the `ltraj` format developed by Clement Calenge in the R package [adehabitatLT](https://cran.r-project.org/web/packages/adehabitatLT/index.html). 
+For help with organizing your movement data into the `ltraj` format, see the very thorough [adehabitatLT vigngette](https://www.google.com/url?sa=t&rct=j&q=&esrc=s&source=web&cd=1&cad=rja&uact=8&ved=0ahUKEwis1dutjL7KAhVW-mMKHQ55BSUQFggcMAA&url=https%3A%2F%2Fcran.r-project.org%2Fweb%2Fpackages%2FadehabitatLT%2Fvignettes%2FadehabitatLT.pdf&usg=AFQjCNHxja4pOMcxutjBd0Nj8G8-l8StLw&sig2=9Gci3fUN8HKfFPhCSHYDBw&bvm=bv.112454388,d.amc). For correct performance, 
+`ltraj` coordinates must be recorded using a Universal Transverse Mercator (UTM) system.
+To fit elevation models, an `ltraj` must also include an `infolocs` field named `elev` containing measurements of vertical distance in meters. 
+
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+There are two example `ltraj` data sets included in `migrateR` for your reference and use in worked examples. 
+For those interested in long-distance migration, we recommend starting with the data set `elk`. 
+The `bighorn` data set is better suited to examining altitudinal migration. 
+Throughout this vignette we will largely rely on `bighorn`, because its small size renders it more convenient for examples.
+  
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+Let's start by taking a look at the `bighorn` data set:
+
+```{r}
+require(migrateR)
+data(bighorn)
+bighorn
+```
+
+Each `ltraj` object consists of a number of trajectories (identified by `id`, here the individual) organized into discrete groups called `bursts`. 
+The `bighorn` data set, above, consists of four such bursts, each representing a different year (in this case, all four bursts happen to consist of data collected from a single ewe-- "s110"). This data set also contains a single `infolocs` field, "elev". We recommend dividing movement data into bursts by study year. 
+Bursts longer than one year are more likely to include more than one movement event (e.g. multiple migrations), making movement models challenging to fit. 
+Bursts much shorter than a year (or with gaps of missing data) can cause similar difficulties and should be checked carefully. 
+Care in checking and organizing movement data pays major dividends in saved frustration with model fitting. 
+  
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+Following [Bunnefeld et al.](#references), we also recommend subsetting location data to one location per day before attempting to fit movement models. Both of `migrateR`'s example data sets follow this suggestion (i.e. were sub-sampled from larger initial data sets). While subsetting location data is not strictly necessary, reducing the number of points included in each burst will reduce run time and often has the ancillary benefit of improving model convergence.
+
+  
+###  b. Models of Animal Movement
+MigrateR currently implements model fitting for two families of movement models, based on Net Squared Displacement (NSD; the squared distance from a trajectory's first point to each subsequent location) and elevation, respectively. 
+We provide the specification of these models below. NSD models are adapted from those introduced by [Bunnefeld et al.](#references). 
+Where possible elevation models follow a parallel structure to allow direct comparison and equivalent interpretation. 
+For further details see [Spitz et al. (2015)](#references)
+MigrateR is structured to allow easy expansion to include other model families, but these have not yet been implemented.
+
+
+###   NSD Models  
+  
+#### Mixed Migrant:  
+$$\Large{NSD} = \Large\frac{\delta}{1+e^{(\frac{\theta-t}{\phi})}} - \Large\frac{\delta*\zeta}{1+e^{(\frac{2(\phi + \phi_2) + \theta + \rho-t}{\phi})}}$$  
+  
+    
+      
+#### Migrant:  
+$$\Large{NSD} = \Large\frac{\delta}{1+e^{(\frac{\theta-t}{\phi})}} - \Large\frac{\delta}{1+e^{(\frac{\theta + 2*\phi + 2*\phi_2 + \rho-t}{\phi})}}$$  
+  
+    
+      
+#### Disperser:  
+$$\Large{NSD} = \Large\frac{\delta}{1+e^{(\frac{\theta-t}{\phi})}}$$  
+  
+    
+      
+#### Nomad:  
+$$\Large{NSD} = \Large\beta*t$$  
+  
+    
+      
+#### Resident:  
+$$\Large{NSD} = \Large{\gamma}*(1-e^{(\kappa*t)}) $$  
+
+
+  
+###   Elevation Models
+  
+#### Migrant:  
+$$\Large{elevation} = \Large\gamma - \Large\frac{\delta}{1+e^{(\frac{\theta-t}{\phi})}} + \Large\frac{\delta}{1+e^{(\frac{\theta + 2*\phi + 2*\phi_2 + \rho-t}{\phi})}}$$  
+  
+#### One way (Disperser):  
+$$\Large{elevation} = \Large\gamma - \Large\frac{\delta}{1+e^{(\frac{\theta-t}{\phi})}}$$  
+      
+#### Resident:
+$$\Large{elevation} = \Large\gamma$$  
+  
+      
+### Explanation of Terms
+
+
+| Parameter | Units | Interpretation |
+| :---------: | ----- | -------------- |
+| t | days | time since first location (or specified "`stdt`") |
+| $\theta$ | days | midpoint of departing movement |
+| $\theta_2$ | days | midpoint of returning movement (derived) |
+| $\phi$ | days | time to complete 1/2 to 3/4 of departing movement |
+| $\phi_2$ | days | time to complete 1/2 to 3/4 of returning movement |
+| $\rho$* | days |  duration of occupancy on second range |
+| $\gamma$ | $km^2$ / $m$ | mean NSD/elevation of resident range |
+| $\delta$ | $km^2$ / $m$ | distance separating the first and second range |
+| $\zeta$* | $\%$ | difference in distance separating second and third range|
+| $\delta_2$ | $km^2$ | distance separating second and third range (derived)|
+| $\beta$ | $km^2$ per day | rate of dispersion |
+| $\kappa$ | log($km^2$ per day) | logarithm of the rate constant |  
+
+Asterisked terms represent revisions to the initial models, which we have implemented to improve model convergence and/or interpretation. 
+We made these revisions such that the interpretation of all remaining terms remain unchanged. 
+Estimates for the two terms we replaced ($\delta_2$ & $\theta_2$) can still be derived, (see [Derived Estimates](#a.-derived-estimates), below).
+  
+***
+  
+## 2. Fitting Movement Models
+The workhorse of `migrateR` is the function `mvmtClass`, which fits a family of movement models to each burst in an `ltraj` object. 
+This output from `mvmtClass` is organized in a list of class `mvmts`, which, like `ltraj` objects, contains a named element for each `burst`. 
+Each of these element in a `mvmts` object is of class `mvmt` and contains the movement models fit to the burst, the parameter constraints used in fitting these models and the data to which the models were fit (for more on `mvmt` class objects, see [Class "mvmt"](#d.-class-mvmt),below). 
+The other functions in `migrateR` are designed to help visualize, organize and interpret the information stored in `mvmt(s)` objects.
+
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+Bursts can be fit singly, e.g. with `mvmtClass(bighorn[1])`, but can more simply be fit as a group:
+```{r, warning=FALSE}
+  bhs.nsd <- mvmtClass(bighorn, stdt = "10-31")
+```
+The (optional) `stdt` argument provides a common reference date (here October 31) from which timing parameters are measured (for more details see [Quantifying Movement](#quantifying-movement), below). 
+By default `mvmtClass` fits the family of NSD models. 
+Bursts may instead be fit to a model family based on vertical distance by setting the argument `fam = "elev"`.
+```{r, warning=FALSE}
+  bhs.elev <- mvmtClass(bighorn, fam = "elev", stdt = "10-31")
+```
+NSD models can be fit to any trajectory, but vertical-distance models can only be fit if the `ltraj` includes an `infolocs` field named `elev` containing measurements of vertical distance. 
+  
+  
+### a. Checking Convergence
+The `mvmtClass` function prints warnings when it encounters a problem in fitting one or more movement models. For example, running the command `mvmtClass(bighorn, stdt = "10-31")` returns the following warnings:
+```{r echo=FALSE}
+  bhs.nsd <- mvmtClass(bighorn, stdt = "10-31")
+```
+indicating problems fitting "resident" models to the second and fourth bursts. 
+Any model that trigger a warning will be omitted from that burst's output. 
+Consequently, each burst in a `mvmts` object may contain a different number of models, depending on how many were successfully fit. 
+Omitted models will neither be included in plots nor be eligible for consideration as a possible classification (see [Classifying Movement](#classifying-movement), below).
+Before moving on from model fitting, a first goal may be to confirm that all models were successfully fit to each burst.
+
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+We can use the function 'fullmvmt' to identify which bursts were successfully fit and which may be missing models. 
+This function takes `mvmt(s)` objects as input and can provide logical, numeric or named output as determined by the optional argument `out`. 
+So if we wanted to know which bursts in `bhs.nsd` are missing models, we could use:
+```{r}
+!fullmvmt(bhs.nsd)
+```
+showing that the second and fourth bursts are incomplete.
+Alternately, we could determine the number of models successfully fit to each burst using:
+```{r}
+fullmvmt(bhs.nsd, out = "numer")
+```
+(showing that only four out of 5 possible models were fit to the second and forth bursts) or could return a character vector containing the names of the models successfully fit to each burst using:
+```{r}
+fullmvmt(bhs.nsd, out = "name")
+```
+which shows that the "resident" model is indeed the only model missing.
+This function can thus be used to identify the bursts that have had some sort of obstacle to model fit, creating opportunity to follow up on these cases in more detail.  
+
+
+### b. Starting Estimates and Constraints
+The most common obstacle to model fit (and the most common causes of warnings from the `mvmtClass` function) is parameter starting values or constraints that are a poor match to the data. 
+In the absence of additional input, `mvmtClass` calls the `pEst()` function to get default starting values and parameter constraints for timing parameters ($\theta$,$\rho$,$\phi$,$\phi_2$, and $\kappa$) and dynamically fills in starting estimates and constraints for distance parameters ($\gamma$, $\delta$, and $\delta_2$) based on the data available from each particular burst. 
+We relied on these defaults in the examples above, but can also use `mvmtClass`'s optional `p.est` argument to manually specify these constraints and starting values. 
+The `pEst` function organizes these values into the structure required by `mvmtClass`. Thus we can refit NSD models to `bighorn` using, e.g., a starting estimate of $\delta$ = 15:
+```{r}
+  pest.n2 <- pEst(s.d = 15)
+  bhs.nsd2 <- mvmtClass(bighorn, stdt = "10-31", p.est = pest.n2)
+  all(fullmvmt(bhs.nsd2))
+```
+In contrast to our first call to `mvmtclass`, which returned two convergence warnings, this slight change in parameter starting values allows for all models to be successfully fit.
+
+
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+For some bursts or `ltraj` objects it may not be possible to successfully fit all models with a single set of parameter estimates. 
+In these cases, the `refine` function allows additional attempts to fit models using new sets of starting parameter values and constraints. 
+This function takes two arguments: a `mvmts` object resulting from a prior attempt to fit movement models and a new set of parameter starting values and constraints as organized by `pEst`. 
+When the `refine` function successfully fits a model, it will be added to the output if that model was missing. 
+If the model was already present, the new model will only replace its antecedent if the new model has lower AIC. 
+Thus, to refine elevation model fit for `bhs.nsd` we might use:
+
+```{r}
+   fullmvmt(bhs.elev)
+   pest.e2 <- pEst(s.d = -500)
+   bhs.elev2 <- refine(bhs.elev, p.est = pest.e2)
+   all(fullmvmt(bhs.elev2))
+```
+
+Like `mvmtClass`, `refine` returns an object of class `mvmts`,  (or from `refine` itself) allowing `refine` to be used recursively.
+The number of different starting values required to successfully fit models to the different bursts in your data set will depend on the range of movement behaviors your data contain.
+  
+
+###  b. Visual Checks
+#### Plotting Models
+Unfortunately, models that don't trigger warnings may also represent a poor fit to you data. 
+Again, this is usually a result of poor starting parameter values or constraints, although it may also result from poor correspondence between models and data (e.g. applying elevation models to a long-distance migrant or applying NSD models to an altitudinal migrant).
+You should always visually inspect all models (even those that don't trigger a warning!) before moving on to classifying animal movement.
+
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+The output from `mvmtClass` can be visualized using the familiar `plot` function. Individual `mvmt` objects can be plotted individually, e.g. `plot(bhs.nsd[[3]])`. 
+The `plot` function can also be used to serially plot each element from a `mvmts` object with 
+```
+plot(bhs.nsd)
+```
+In this case, before each trajectory is plotted, a prompt will appear in the `R` console, identifying the burst and asking whether it should be skipped (`0`) or plotted (any other key; the `Esc` key may also be used from the 'R' console to cancel the command). Unless the argument `new = T` each plot will overwrite its predecessor. If the argument `new = T` R will create a new device for plotting each window (this will not work in R Studio, which only permits a single graphics device).  
+
+```{r, fig.height=4, fig.width=7, echo=FALSE}
+plot(bhs.nsd[[3]])
+```
+
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+Plots are named by `burst` and each plot also includes a legend ranking the fit of each model from lowest to highest $\Delta$AIC (models can instead be listed alphabetically by setting the optional plot argument `ranked = F`). 
+Each model is represented by a unique color and line type and all model names are spelled out in the legend, except for the "mixed-migrant" model, which is abbreviated as "mixmig". 
+The x-axis is always time and the y-axis will depend on which family of models is used. The range of the x-axis is constant (a calendar year, plotted from "stdt" or from the first location if "stdt" was not specified), but the range of the y-axis will vary by burst based on the data included (unless this range is specified directly using the `ylim` argument).
+Location data is shown behind the models as open grey circles. 
+
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+Plots of your data will often provides helpful cues as to how you can improve starting parameter values and constraints. 
+Sometimes it may also be helpful to visualize models that triggered warnings. 
+By setting `mvmtClass`'s optional argument `warnOnly = T`, all models will be included in the output (even those that triggered convergence-related warnings). 
+This allows the use of `plot`, as above, to visualize problematic bursts.    
+
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+If plotted models appear to be a poor visual match to the location data, it may be worth attempting to `refine` model fit based on new starting parameter estimates and/or restrictions. For example, if we look at
+```{r, fig.height=4, fig.width=7, echo=T}
+plot(bhs.elev[[3]])
+```
+we see a model depicting upward movement, where downward movement may provide a better fit to the higher elevation values in November-January. To test this, we return to `refine`, setting the upper limit of $\delta$ = 0, forcing the fit of a model for downward movement. 
+```{r, fig.width = 7.5, fig.height = 3.5}
+   pest.e3 <- pEst(u.d = 0)
+   bhs.elev3<- refine(bhs.elev, p.est = pest.e3)
+   plot(bhs.elev3[[3]])
+```
+This confirms our suspicion that a model showing downward movement represents a better fit to the data from this burst. 
+Restricting the value of $\delta$ in elevation plots may be especially useful, because in most species there is a fixed relationship between migratory direction and season. Defining the direction of migration can thus be used to ensure that all "migrant" models represent the same seasonal movement. 
+The plot shown above, for example, is now more directly comparable to its neighboring burst, because now all models depict migration to and from the winter range (in this case, downward movement), whereas before they were offset with the third burst depicting (upward) movement to and from the summer range.
+Unfortunately, there is no comparable constraint for NSD models and care must be taken to ensure that offset models are not analyzed jointly.
+
+  
+#### Spatial Comparison
+The `spatmig` functions provides a further visual check in the form of a crude spatial comparison. 
+This function produces two side-by-side plots, the first resembles the standard output from using `plot` on a `mvmt` object, the second shows the location data in coordinate space. 
+Using model parameter estimates, `spatmig` categorizes each point on both plots as either belonging to the starting range (range 1), belonging to a secondary range (range 2) or unclassified (includes outliers and points in transit). 
+Each point is plotted with a symbol representing its assigned classification. 
+This allows easy comparison of groupings between the one-dimensional model metrics (NSD, elevation, etc.) and spatial grouping of the locations. 
+Where models fit the data well, we expect, e.g. high and low NSD values to be spatially separated. 
+This is what we see when we look at:
+
+```{r, fig.width=7.5, fig.height=3.5 }
+spatmig(bighorn[2], bhs.nsd[2])
+
+```
+Points classified by the movement models as belonging to range 1 (dots) are spatially distinct from points classified as belonging to range 2 (crosses) with minimal to no overlap.
+By default parameter estimates from the "migrant" model is used to classify points, but this can be changed by setting the argument `model =` "mixmig" or "disperser".  The name of the selected model is included as the title of the right panel. 
+
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+If spatial comparison shows little or poor grouping of points for migrants, it may be worth returning to `refine` or trying to fit the location data to a different family of movement models (e.g. "elev" instead of "nsd" or vice versa).
+
+  
+***
+  
+## 3. Classifying Movement
+Now that we have fit movement models to each trajectory, our next task is determining which of these models is best supported. 
+In addition to the legends included in our plots, you may have noticed that the printed output from `mvmtClass` also contains an initial classification (listed under "topmod").  
+```{r}
+bhs.nsd2
+```
+This output is based on the function `topmvmt`, which takes `mvmts` or `mvmt` objects as input and returns the best supported model from each burst. These models are named (e.g. "migrant") allowing us to easily extract information about the prevalence of each movement strategy. (Throughout `migrateR`, the full name is used for all models except for the "mixed-migrant" model, which is abbreviated "mixmig".)
+```{r}
+top.bhs.nsd2 <- topmvmt(bhs.nsd2)
+bhs.nsd2.behavior <- names(top.bhs.nsd2)
+table(bhs.nsd2.behavior)
+```
+
+### a. Constraining Model Selection
+In many cases it may helpful to further specify how `topmvmt` selects a top model, using one or more of the functions optional arguments. These arguments have no effect on the underlying models `topmvmt` compares, but can change which top model is selected. We believe that analyses of migration greatly benefit from careful a priori definition of migratory behavior (e.g. minimum travel distances) and our goal here is to allow for the already common practice of including this information in these analyses.
+
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+A common complaint is that AIC comparison often favors more complicated models (leading, e.g. to a bias against correctly classifying "resident" behavior; [Bunnefeld et al.](#references)). 
+To combat this, `topmvmt` applies [Arnold's Rule](#references) which imposes an additional penalty for model complexity.
+This option can be disabled by setting the optional argument `a.rule = F`. 
+Even with this option enabled, privileging complexity can remain a problem, but can often be allayed by including a prior considerations.
+
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+In some cases, for example, it may be defensible to entirely exclude one or more models from consideration.  The `omit` argument allows models to be excluded by name. For example, if previous research in your study species rules out the possibility of nomadism, you could exclude "nomad"" models from consideration by setting `omit = "nomad"`.  This option should be used judiciously; if the problem is a poor fitting model (e.g. a top "nomad" model that is a poor fit to the data) it's replacement is guaranteed to be an even poorer fit. A more common application might be to exclude "mixed-migrant" models, whose flexibility can often lead to either a poor correspondence to the intended behavior or a top model that offers little minimal improvement over the simpler "migrant" model (see, e.g. plots from bhs.nsd2).
+
+
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+While these tools may be useful in some circumstances, we strongly recommend relying on parameter-based constraints. 
+`topmvmt` allows minimum values to be set for the length of migratory-range occupancy ($\rho$) and the distance separating migratory ranges ($\delta$) using the `mrho` and `mdelta` arguments, respectively. 
+These values may be used to constrain models to a consistent biological definition of migration, distinguishing it, for example, from exploratory forays or small seasonal shifts in range use.
+Any model that fails to meet the specified threshold(s) is excluded from consideration. (Alternatively, minimum values can be set for these parameters using the `p.est` argument in `mvmtClass`, but using this argument to constrain parameter estimates can interfere with model convergence. We therefore recommend applying these thresholds after models have been fit using minimal `p.est` constraints.) For example, specifying a minimum residency period of 21 days, and a minimum distance of 500 meters:
+
+```{r}
+summary(bhs.elev3)  # default classification shown under "topmod"
+
+top.bhs.elev3 <- topmvmt(bhs.elev3, mrho = 21, mdelta = 500)
+table(names(top.bhs.elev3))
+```
+shows that one of the `bursts` initially classified as a "migrant" using the default arguments for `topmvmt` is now instead classified as "resident". 
+Comparing the plots from these bursts, we see that the "migrant" model from the reclassified burst (left) shows a different pattern (starting later, immediately beginning a gradual return) that contrasts with the remaining three bursts, which appear much more similar to one another (for example, the second burst, right).
+```{r, fig.width=7.5, fig.height=3.5,echo=FALSE }
+par(mfrow=c(1,2))
+plot(bhs.elev3[[1]])
+plot(bhs.elev3[[2]])
+```
+The units of `mdelta` are always the same as $\delta$, so for NSD models, the units for `mdelta would be $km^2$, for elevation models, meters.
+
+
+***
+
+
+## 4. Quantifying Movement
+For many analyses, the parameters estimated by movement models may be of greater interest than simply identifying which model received the greatest support. Once a list of top models has been found, we can extract and organize parameter estimates from these models using the `mvmt2df` function, which takes models as its argument and outputs a `data.frame` of parameter estimates for each movement behavior present.
+```{r}
+p.bhs.nsd2 <- mvmt2df(top.bhs.nsd2)
+p.bhs.nsd2
+```
+In this example nomads are only represented by one example, but parameter estimates for mixed migrants ("mixmig") are grouped.  
+
+###a. Derived Estimates
+Our models have 2 slight algebraic differences from those of [Bunnefeld et al.](#references) (see [Models of Animal Movement](#b.-models-of-animal-movement), above). 
+First, rather than estimate the timing (midpoint) of return movements ($\theta_2$ in Bunnefeld et al.), our models directly estimate the duration of migratory-range occupancy ($\rho$). 
+The timing of return movements can easily be calculated as a derived parameter, (i.e. $\theta_2 = \theta+2*\phi+2*\phi_2+\rho$) using the function `theta2`.
+```{r}
+t2 <- theta2(bhs.nsd2)
+t2
+```  
+You can confirm this visually by adding a line for $\theta_2$ to your plot for this burst, i.e.
+```{r,echo=FALSE}
+par(mfrow=c(1,1))
+```
+
+```{r, fig.width = 7.5, fig.height = 3.5}
+plot(bhs.nsd[[3]])
+abline(v = t2[3,1], lty = 2, lw = 2)
+```
+By default `theta2` calculates estimates for the "migrant" model, but estimates can instead be calculated for "mixed-migrant" models by setting the optional argument `mod = "mixmig"`.
+Finally, unless care is taken in organizing the `ltraj` `bursts`, values of $\theta_2$ may not be comparable across models (see [Comparing Timing Parameters Arcoss Bursts](#c.-comparing-timing-parameters-across-bursts) in the next section).  
+
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+Similarly, our models omit a direct estimate of the return distance traveled by mixed migrants ($\delta_2$ in Bunnefeld et al.), in favor of estimating the percent of their outward movement the return journey represents ($\zeta$). As with $\theta_2$, $\delta_2$ can easily be derived ($\delta_2 = \zeta*\delta$), this time using the function `delta2`.
+```{r}
+d2 <- delta2(bhs.nsd2)
+d2
+```
+Again, we can confirm these results visually using, e.g.,
+```{r, fig.width = 7.5, fig.height = 3.5}
+plot(bhs.nsd2[[2]])
+d <- coef(bhs.nsd2[[2]]@models$mixmig)["delta"]
+abline(h = d-d2[2,1], lty = 2, lw = 2)
+```
+In rare cases where "mixed-migrant" model fit is exceptionally poor (e.g. if $\zeta$ is allowed to equal zero) this function may return an error, but this can usually be avoided through more careful consideration of parameter constraints.
+
+
+### b. Start and End of Movement
+In addition to knowing the midpoints of departing and returning movements ($\theta$ and $\theta_2$), it may often be useful to define the time at which these movements begin and end. 
+The `mvmt2dt` function can be used to perform these calculations.
+This function takes a `mvmt(s)` object as input and returns the start and end date of each movement 
+The start and end of movements are defined by the argument "p", the percent of the migratory distance traveled. By default "p" = 0.05, such that the start of migration is estimated as the time at which model predictions = 0.05$*\delta$ and end time of movement is defined as the time at which model predictions = (1 - 0.05)$*\delta$. 
+By default dates are calculated for the "migrant" model, but the "mixed-migrant" ("mixmig") or "disperser" models can instead be selected using the optional "mod" argument. 
+For each burst `mvmt2dt` returns a `data.frame` with each date in two formats: decimal days from "stdt" ("dday"; calculated from the first location if "stdt" was not specified) and POSIXct ("date"). The function will issue a warning if the intervals of departing and returning movement overlap.
+```{r}
+mvmt2dt(bhs.nsd, mod = "mixmig")
+```
+
+
+***
+    
+## 5. Advanced Options  
+### a. Omitting Points
+Many trajectories begin or end with problematic points that may compromise model fit. 
+While we generally recommend that these problems be handled when organizing data into an `ltraj` object, we have included two optional arguments to `mvmtClass` which allow for ad hoc adjustments.
+For example, the third burst from bighorn ends with a period of increased variance in NSD, which compromises the interpretation of these models, leading to a classification as "nomad" even though the "migrant" model appears visually to be a superior match.
+To address this problem, we can use the "ecut" argument, which excludes points from the end of a trajectory.
+Like "stdt", this argument requires a character string formatted as "%m-%d". Looking at the plot for s110 2009, above, we might choose June 15 ("6-15") as a reasonable cutoff.
+We might then try:
+```{r}
+bhs3.nsd <- mvmtClass(bighorn[3], stdt = "10-31", ecut = "6-15")
+```
+We show the original models on the left, below, and the revised models (calculated after points were excluded) below on the right.
+```{r, fig.width = 7.5, fig.height = 3.5, echo=FALSE}
+par(mfrow=c(1,2))
+plot(bhs.nsd2[[3]])
+plot(bhs3.nsd[[1]])
+```
+With these later points excluded, the classification shifts from "nomad" to a clear-cut case of migration.
+The excluded points are plotted as open squares, while retained points remain open circles. 
+
+
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+The "scut" argument functions analogously to "ecut", instead excluding points from the start of a trajectory rather than its end. 
+Both "cut" arguments can only be changed in `mvmtClass` and will be ignored if included in `refine`. 
+Bounded points can only be omitted by removing all locations before or after or by manually altering a burst.
+Finally, although these arguments provide a convenient tool for data exploration, we caution against reliance on ad hoc adjustments for model fit. Variation in individual behavior can make it difficult to find a single "ecut/scut" value appropriate to all bursts. 
+Plotting NSD models fit to the four trajectories in "bighorn", for example, could arguably suggest at least three different "ecut" values.
+When included, choice of "cut" values should be acknowledged as ad hoc, or, preferably, justified by other quantitative means. 
+
+
+### b. Sensitivity to Starting Coordinates  
+As mentioned previously, NSD is calculated as the squared distance from a trajectory's first point to each subsequent location. 
+NSD values can therefore be sensitive to the location of the first point. 
+These methods implicitly assume that the first point is representative of the starting seasonal range ([Bunnefeld et al.](#references)). 
+If, instead, the first point happens to be an outlier, e.g. representing an exploratory foray, this can lead to poor model fit and, consequently, erroneous inference. 
+Instead of fitting models to NSD, `mvmtClass` allows models to be fit to relative NSD (rNSD) the net squared displacement calculated from a reference point other than the first location. 
+To specify a reference location set the argument `rloc = x` where `x` is the number of the location you wish to use as a reference. For example,
+`mvmtClass(bighorn[1], rdt = 2)`
+ fits models to the first trajectory in bighorn using rNSD values calculated relative to the trajectory's second location. The function `findrloc` can be used to compare different choices of reference date using AIC. This function returns a number for the reference location that results in a top model with the lowest overall AIC. Thus, `findrloc` can be used to determine an optimum reference date for input into `mvmtClass`.
+```{r, warning=FALSE}
+rlocs <- findrloc(bighorn)
+bhs.rnsd <- mvmtClass(bighorn, rloc = rlocs$rloc, stdt = "10-31", p.est = pest.n2)
+bhs.rnsd2 <- refine(bhs.rnsd, pEst(s.t = 220))
+fullmvmt(bhs.rnsd2,"name")
+
+```
+To see how this changes model fit, we can compare two plots.
+```{r, fig.width = 7.5, fig.height = 3.5, echo=FALSE}
+   par(mfrow=c(1,2))
+   plot(bhs.nsd[[1]], ylim=c(0,45))
+   plot(bhs.rnsd2[[1]], ylim=c(0,45))
+```
+The left plot is the original NSD and the revised rNSD plot is on the right. 
+Note that the y-axes here are held constant and that the rNSD plot provides lower displacement values.
+While the top model remains the same for both of these plots, the rNSD plot shows a more regular pattern that more closely matches the movement models.
+These rNSD model could be followed up either by omitting points following increase in variance in rNSD (starting ~June 25; [Omitting Points](#a.-omitting-points)) or by [constraining model selection](#a.-constraining-model-selection).
+
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+There is no need to specify a reference date for models of vertical movement (`fam = elev`), because one of the advantages of these models is that they are insensitive to starting location. (For more details on rNSD, see Spitz et al. 2016.)  
+
+
+### c. Comparing Timing Parameters Across Bursts
+Returning to "bighorn" we can see that several of the bursts begin on different calendar days("date.begin").
+```{r, echo=FALSE}
+bighorn
+```
+The parameters estimates from `mvmtClass` models are all made relative to the first location included in a burst. 
+To facilitate direct comparison of parameter estimates across bursts, `mvmtClass` includes the `stdt` argument, which you can use to standardize the calendar date from which all timing parameters are estimated. 
+The `stdt` argument requires character input formatted  as "%m-%d". 
+For example, `mvmtClass(bighorn, stdt = "10-31")`, which we used above, fits models to bighorn estimating timing parameters as days from October 31. 
+Comparing the parameter estimates to our default fit, we can see that the only changes are to the estimates for $\theta$, the time at which the migratory movement is half completed. 
+```{r}
+bhs.elev0 <- mvmtClass(bighorn, fam = "elev", p.est = pest.e2)
+bhs.elev0r1 <- refine(bhs.elev0, p.est = pest.e3)
+fullmvmt(bhs.elev0r1, out = "name")
+
+bhs.elev.stdt.mig <- topmvmt(bhs.elev3, omit = c("resident", "disperser"))
+bhs.elev.mig <- topmvmt(bhs.elev0r1, omit = c("resident", "disperser"))
+
+p.elev.stdt <- mvmt2df(bhs.elev.stdt.mig)
+p.elev <- mvmt2df(bhs.elev.mig)
+
+round(p.elev.stdt[[1]] - p.elev[[1]] ,2)
+```
+We see here that for the first four bursts, theta is the only parameter estimate that changes. 
+Occasionally, though, setting a "stdt" can have larger consequences for model fit. 
+Because values of $\theta$ are calculated relative to either the first location or the "stdt", setting a value for "stdt" that differs from the first location effectively changes the starting value and range limits for $\theta$.
+This is most likely to be a concern when a "stdt" is chosen that differs greatly from a trajectory's first location.
+This problem is most easily addressed by building `ltraj` data sets where each burst begins on or near your preferred "stdt", but can also be resolved by making manual changes to starting values and constraints for $\theta$ through `mvmtClass`'s "p.est" argument.
+As always, if you have any uncertainty about how changing inputs affect model fit, visually checking the models is a good idea.  
+
+
+### d. Class "mvmt"
+Objects of class `mvmt` include three slots: "models", "param" and "data"; "Models" is a `list` containing a named element for every model that was successfully fit, "param" is a `data.frame` containing minimum, starting and maximum parameter values, and "data" is a `data.frame` containing the data used to fit the models (three fields, "decday" = decimal day, either "nsd" or "elev" depending on the model family fit, and "cut" indicating whether any points were excluded before fitting the models).
+The familiar `str` function can be used to navigate the contents of `mvmt` class objects, e.g., 
+```{r}
+  str(bhs.nsd[["s110 2010"]])
+```
+shows us that only four of five possible models were successfully fit to this burst, with the "resident" model missing. 
+Additional information about `mvmt` objects, including a record of any optional arguments included in the call to `mvmtClass` are stored as attributes. 
+
+
+    
+***
+
+
+## References
+  
+[Arnold, T. W. (2010). Uninformative Parameters and Model Selection Using Akaike's Information Criterion. *The Journal of Wildlife Management*, **74**, 1175–1178.](http://onlinelibrary.wiley.com/doi/10.1111/j.1937-2817.2010.tb01236.x/abstract)
+  
+[Bunnefeld, N., van Moorter, B., Rolandsenm C.M., Dettki, H., Solberg, E.J. & Ericsson, G. (2011). 
+A model-driven approach to quantify migration patterns: individual, regional and yearly differences.
+*Journal of Animal Ecology*, **80**, 466-476.](http://onlinelibrary.wiley.com/doi/10.1111/j.1365-2656.2010.01776.x/full)
+
+Spitz, D. (2015). Does Migration Matter? Causes and Consequences of Migratory Behavior in Sierra Nevada Bighorn Sheep. Dissertation thesis, University of Montana.
