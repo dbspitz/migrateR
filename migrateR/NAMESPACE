@@ -1,0 +1,1 @@
+export( delta2, findrloc, fullmvmt, mvmt2df, mvmt2dt, mvmtClass, pEst, plot.mvmt, plot.mvmts, print.mvmts, refine, spatmig, str.mvmt, str.mvmts, summary.mvmt, summary.mvmts, theta2, topmvmt)
