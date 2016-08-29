@@ -24,7 +24,7 @@ To install:
   
     &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;i. Load the "devtools" library in R: `library(devtools)`
 
-    &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;ii. Install migrateR directly from GitHub: `install_github("dbspitz/migrateR")`
+    &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;ii. Install migrateR directly from GitHub: `install_github("dbspitz/migrateR/migrateR")`
   
   
   **Or**
