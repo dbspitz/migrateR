@@ -20,28 +20,28 @@ To install:
 
   a. *From GitHub*:
   
-    &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;0. If you do not already have the "devtools" package: `install.packages("devtools")`
+    0. If you do not already have the "devtools" package: `install.packages("devtools")`
   
-    &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;i. Load the "devtools" library in R: `library(devtools)`
+    i. Load the "devtools" library in R: `library(devtools)`
 
-    &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;ii. Install migrateR directly from GitHub: `install_github("dbspitz/migrateR/migrateR")`
+    ii. Install migrateR directly from GitHub: `install_github("dbspitz/migrateR/migrateR")`
   
   
   **Or**
   
   b. *Manually*:
   
-     &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;i. Download the package by clicking on the ".tar.gz" file under "code" and then clicking "View Raw".
+    i. Download the package by clicking on the ".tar.gz" file under "code" and then clicking "View Raw".
     
-    &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;ii. Move the ".tar.gz" file to a location of your choosing, recording the folder's filepath as, e.g., 
+    ii. Move the ".tar.gz" file to a location of your choosing, recording the folder's filepath as, e.g., 
     
-    &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;`my.dir <- "MyDirectory"` (where "MyDirectory" is your chosen filepath in quotes) 
+        `my.dir <- "MyDirectory"` (where "MyDirectory" is your chosen filepath in quotes) 
     
-    &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;iii. Set the working directory to the filepath containing the ".tar.gz" file: `setwd(my.dir)`
+    iii. Set the working directory to the filepath containing the ".tar.gz" file: `setwd(my.dir)`
     
-    &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;iv. Store the name of your "tar.gz" file, e.g., `filename <- "migrateR_1.0.3.tar.gz"`
+    iv. Store the name of your "tar.gz" file, e.g., `filename <- "migrateR_1.0.3.tar.gz"`
     
-    &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;v. Install the package from file with: `install.packages(filename, type = "source")`
+    v. Install the package from file with: `install.packages(filename, type = "source")`
     
 
 3. Load migrateR library in R: `library(migrateR)`
