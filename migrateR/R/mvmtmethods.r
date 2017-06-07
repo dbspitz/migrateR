@@ -136,8 +136,8 @@
 
   ## V. plot
   ##----------------------------------------------------------------------------
-  plot.mvmt <- function(mvmt, new = F, omit = NA, ranked = T, 
-    xlim = c(0,365), ...){		
+  plot.mvmt <- function(mvmt, new = F, omit = NA, ranked = T, xlim = c(0,365), 
+    ...){		
       fam <- attr(mvmt, "family")
       dates <- attr(mvmt, "dates")
       stdt.chr <- paste(dates["styr"],dates["stdt"],sep = "-")
@@ -153,15 +153,21 @@
       if(new == T) dev.new()
       opar <- par(mar = c(0,0,0,0), mgp = c(3,1,0), xpd=F)
       par(mar=c(5, 4.1, 4.1, 9.1),mgp = c(2.5,0.5,0))
-      ylab <- c(nsd = expression("NSD "(Km^2)),elev = "Elevation (m)")[fam]
-
+      
       mdata <- mvmt@data 
 	  x1 <- mdata$decday[!mdata$cut]      
 	  y1 <- mvmt@data[,fam]
 
+          if (max(na.omit(c(dates["rloc"], 1)))>1)
+        fam = "rnsd"
+
+      ylab <- c(nsd = expression("NSD " (Km^2)),
+        rnsd =expression("rNSD " (Km^2)),
+        elev = "Elevation (m)")[fam]
+        
       plot(seq(1,365,length.out = length(y1)), y1, typ = "n",
         xlab = "Days", ylab = ylab, xaxt = "n", main = attr(mvmt,"burst"), 
-        las=1, ...)    
+        las=1, xlim=xlim, ...)    
       mvmtAxis(stdt)
       
       if(sum(mdata$cut) > 0 ){
