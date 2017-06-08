@@ -20,30 +20,28 @@ To install:
 
   *From GitHub*:
   
-  0. If you do not already have the "devtools" package: `install.packages("devtools")`
+  &nbsp;&nbsp;&nbsp;&nbsp;(a)  If you do not already have the "devtools" package: `install.packages("devtools")`
   
-  i. Load the "devtools" library in R: `library(devtools)`
+  &nbsp;&nbsp;&nbsp;&nbsp;(b)  Load the "devtools" library in R: `library(devtools)`
 
-  ii. Install migrateR directly from GitHub:
-  
-       `install_github("dbspitz/migrateR/migrateR", build_vignettes = T)`
+  &nbsp;&nbsp;&nbsp;&nbsp;(c) Install migrateR directly from GitHub: `install_github("dbspitz/migrateR/migrateR", build_vignettes = T)`
   
   
   **Or**
   
   *Manually*:
   
-  i. Download the package by clicking on the ".tar.gz" file under "code" and then clicking "View Raw".
+  &nbsp;&nbsp;&nbsp;&nbsp;(a) Download the package by clicking on the ".tar.gz" file under "code" and then clicking "View Raw".
     
-  ii. Move the ".tar.gz" file to a location of your choosing, recording the folder's filepath as, e.g., 
+  &nbsp;&nbsp;&nbsp;&nbsp;(b) Move the ".tar.gz" file to a location of your choosing, recording the folder's filepath as, e.g., 
     
         `my.dir <- "MyDirectory"` (where "MyDirectory" is your chosen filepath in quotes) 
     
-  iii. Set the working directory to the filepath containing the ".tar.gz" file: `setwd(my.dir)`
+  &nbsp;&nbsp;&nbsp;&nbsp;(c) Set the working directory to the filepath containing the ".tar.gz" file: `setwd(my.dir)`
     
-  iv. Store the name of your "tar.gz" file, e.g., `filename <- "migrateR_1.0.3.tar.gz"`
+  &nbsp;&nbsp;&nbsp;&nbsp;(d) Store the name of your "tar.gz" file, e.g., `filename <- "migrateR_1.0.3.tar.gz"`
     
-  v. Install the package from file with: `install.packages(filename, type = "source")`
+  &nbsp;&nbsp;&nbsp;&nbsp;(e) Install the package from file with: `install.packages(filename, type = "source")`
     
 
 3. Load migrateR library in R: `library(migrateR)`
