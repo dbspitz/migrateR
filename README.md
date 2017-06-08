@@ -35,7 +35,7 @@ To install:
     
   &nbsp;&nbsp;&nbsp;&nbsp;(b) Move the ".tar.gz" file to a location of your choosing, recording the folder's filepath as, e.g., 
     
-        `my.dir <- "MyDirectory"` (where "MyDirectory" is your chosen filepath in quotes) 
+  &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;`my.dir <- "MyDirectory"` (where "MyDirectory" is your chosen filepath in quotes) 
     
   &nbsp;&nbsp;&nbsp;&nbsp;(c) Set the working directory to the filepath containing the ".tar.gz" file: `setwd(my.dir)`
     
