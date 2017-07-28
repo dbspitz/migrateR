@@ -209,7 +209,7 @@
         daic   <- daic[aico]
         p$lty   <- p$lty[aico]
       }
-	  legend(390,yleg,title = as.expression(
+	  legend(max(xlim)*1.07, yleg, title = as.expression(
         substitute(A~B, list(A = as.name("Delta"),
           B = as.name("AIC")))
         ),legend = paste(round(daic, 0), modn), lty = p$lty,
