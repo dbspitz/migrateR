@@ -35,13 +35,15 @@
 
     mvmt.f <- sapply(names(mvmt),function(x){
       mvmt1 <- mvmt[x][[1]]
-	  mod <- mvmt1@models
-	  newmod <- wmvmt2[x][[1]]@models
-
-	  og <- names(newmod)[which(names(newmod)%in%names(mod))]
+      mod <- mvmt1@models
+      newmod <- wmvmt2[x][[1]]@models
+      og <- names(newmod)[which(names(newmod)%in%names(mod))]
       if(length(og)>0){
-      	improved <- og[which(sapply(newmod[og],AIC) < 
-      	  sapply(mod[og],AIC))]
+      	tryAIC <- function(z){
+          switch(1+(class(z)[1]=="list"), AIC(z), Inf)
+        }
+	improved <- og[which(sapply(newmod[og], tryAIC) < 
+      	  sapply(mod[og], tryAIC))]
       	if(length(improved)>0){
       	  mod[improved] <- newmod[improved]
           mvmt1@models <- mod[sort(names(mod))]
