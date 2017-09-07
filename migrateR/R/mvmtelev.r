@@ -47,13 +47,18 @@
 	      error=function(c){
 	        msg <- conditionMessage(c)
 	        print("dis2")
-	        message(c)
+	        #message(c)
+		return(c)
 	    })
-        dis <- dis[which(sapply(dis,class)=="nls")]
-        if (length(dis)>1){
-          if (dis[[2]]$convInfo$stopCode==300) dis <- dis[1]
-          dis <- dis[which.min(sapply(dis,AIC))] 		
-        }
+        if(any(sapply(dis,class)=="nls")){
+      	  dis <- dis[which(sapply(dis,class)=="nls")]
+      	  if (length(dis)>1){
+            if (dis[[2]]$convInfo$stopCode==300) dis <- dis[1]
+            dis <- dis[which.min(sapply(dis,AIC))] 		
+          }
+      	} else{
+      	  dis <- dis[1]
+      	}
       }
 
       z@models$disperser <- dis[[1]]
