@@ -16,7 +16,7 @@
         rownames(out)<- attr(v,"burst")
         return(out)
       }     
-      x <- car::deltaMethod(v@models[[mod]],"theta+2*phi+rho+2*phi2")
+      x <- car::deltaMethod(v@models[[mod]],"theta+2*phi+rho+2*phi2")[1:2]
       names(x) <- c("theta2", "SE")
       return(x)
     })))
