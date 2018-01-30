@@ -1,9 +1,9 @@
 Package: migrateR
 Type: Package
 Title: Animal Movement Classification
-Version: 1.0.6
+Version: 1.0.5
 Depends: adehabitatLT, car
-Date: 2018-01-28
+Date: 2017-07-28
 Author: Derek Spitz
 Maintainer: Derek Spitz <spitzderek@gmail.com>
 Description: Quantification and classification of animal movement using non-linear models adapted from Bunnefeld et al 2011. and Spitz et al. 2016

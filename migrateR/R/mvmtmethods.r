@@ -32,8 +32,7 @@
     class(y)<- c("mvmts","list")
     return(y)
   }
-  
-  
+
   ## II. summary
   ##----------------------------------------------------------------------------
   summary.mvmt <- function(x, ...){
@@ -190,7 +189,7 @@
 	  modn <- names(mvmt@models)
 
       y1 <- mapply(fitted,mvmt@models)
-      if(length(x1)==max(dim(y1))){  
+      if(length(x1)==length(y1)){  
 	# Models
 	matplot(x1,y1, add = T, typ = "l", 
 	    lty = p$lty, lwd = 2, col = p$col, xlim = xlim)	
