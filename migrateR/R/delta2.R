@@ -10,9 +10,14 @@
         out <- data.frame(delta2=NA,SE=NA)
         rownames(out)<- attr(v,"burst")
         return(out)
-      }     
-      x <- car::deltaMethod(v@models$mixmig,"delta*zeta")
-      names(x) <- c("delta2", "SE")
+      }
+      m.fit <- v@models$mixmig
+      x <- try(car::deltaMethod(coef(m.fit),"delta*zeta", vcov(m.fit))[1:2])
+      if(class(x)=="try-error"){
+        out <- data.frame(delta2=NA, SE=NA)
+        rownames(out)<- attr(v,"burst")
+        return(out)
+      }names(x) <- c("delta2", "SE")
       rownames(x) <- attr(v,"burst")
       return(x)
     }))
