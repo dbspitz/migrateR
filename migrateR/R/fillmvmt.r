@@ -35,7 +35,7 @@
         dates[6] <- difftime(strptime(paste(syr,dates[1],sep="-"),"%Y-%m-%d"), d1, units="days")
       } else {
 	    d1 <- strptime(paste(syr,stdt,sep="-"),"%Y-%m-%d")
-        if(all(z$date<d1)){
+        if(sum(z$date<d1)*2 > length(z$date)){
           dates["syr"] <- syr <- syr-1
           d1 <- strptime(paste(syr,stdt,sep="-"),"%Y-%m-%d")
         }
@@ -55,6 +55,11 @@
       }
       cutp <- z$date < scut | z$date > ecut
       output@data <- data.frame(dday = dday, y = y, cut = cutp)      
+      if(any(is.na(y))){
+        n <- sum(is.na(y))
+        output@data <- output@data[which(!is.na(y)), ]
+        warning("\t", n, " locations deleted due to missing ", fam, " data", immediate. = T)
+      }
       names(output@data) <- c("decday",fam,"cut")
       output@param <- p.est
       return(output)

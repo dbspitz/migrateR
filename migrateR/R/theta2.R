@@ -15,8 +15,14 @@
         out <- data.frame(theta2=NA,SE=NA)
         rownames(out)<- attr(v,"burst")
         return(out)
-      }     
-      x <- car::deltaMethod(v@models[[mod]],"theta+2*phi+rho+2*phi2")
+      }
+      m.fit <- v@models[[mod]]
+      x <- try(car::deltaMethod(coef(m.fit),"theta+2*phi+rho+2*phi2", vcov(m.fit))[1:2])
+      if(class(x)=="try-error"){
+        out <- data.frame(theta2=NA,SE=NA)
+        rownames(out)<- attr(v,"burst")
+        return(out)
+      }
       names(x) <- c("theta2", "SE")
       return(x)
     })))

@@ -11,10 +11,9 @@
     }
     cinf=list(stopCode=111)
     withCallingHandlers(tryCatch(expr, error = function(e) e),
-				     warning = w.handler)
-	
+				     warning = w.handler)	
   }
-  	lapply(output,function(z){
+    lapply(output,function(z){
       param <- z@param
       elev <- z@data$elev[!z@data$cut]
       dday <- z@data$decday[!z@data$cut]
@@ -24,7 +23,7 @@
 
       z@models$resident <- glm(elev~1)
 
-	  dis <- list()	
+      dis <- list()	
       dis[[1]] <- tryCatchNull(nls(
         elev~(gamma+delta/(1+exp((theta-dday)/phi))), 
 	    algorithm = "port", upper = param["upr",c(1:4)], 
@@ -46,17 +45,21 @@
 	      control = control1),
 	      error=function(c){
 	        msg <- conditionMessage(c)
-	        print("dis2")
-	        message(c)
+	        #message(c)
+		return(c)
 	    })
-        dis <- dis[which(sapply(dis,class)=="nls")]
-        if (length(dis)>1){
+      }      
+      if(any(sapply(dis,class)=="nls")){
+      	dis <- dis[which(sapply(dis,class)=="nls")]
+      	if (length(dis)>1){
           if (dis[[2]]$convInfo$stopCode==300) dis <- dis[1]
           dis <- dis[which.min(sapply(dis,AIC))] 		
         }
+	z@models$disperser <- dis[[1]]	
+      } else{
+      	z@models$disperser <- NULL
       }
 
-      z@models$disperser <- dis[[1]]
       mig <- list()
       mig[[1]] <- tryCatchNull(nls(
         elev~(gamma+delta/(1+exp((theta-dday)/phi)) - 
@@ -68,7 +71,7 @@
       	  message=as.character(mig[[1]]))
       	mig[[1]]$message <- gsub("\n","",strsplit(mig[[1]]$message,": ")[[1]][2])
       }
-      if((mig[[1]]$convInfo$stopCode > 6&class(mig[[1]])[1]=="nls")){
+      if((mig[[1]]$convInfo$stopCode > 6&class(dis[[1]])[1]=="nls")){
         param["strt",c("gamma","theta","phi","delta")] <- coef(dis[[1]])
         if (param$delta[2]>param$delta[3]){
           param$delta[c(1,3)] <- -param$delta[c(3,1)]
@@ -84,8 +87,18 @@
         mig <- mig[which(sapply(mig,class)=="nls")]
         if (length(mig)>1) mig <- mig[which.min(sapply(mig,AIC))] 		
       }
-      z@models$migrant <- mig[[1]]
-
+      
+      if(any(sapply(mig, class)=="nls")){
+      	mig <- mig[which(sapply(mig, class)=="nls")]
+      	if (length(mig)>1){
+          if (mig[[2]]$convInfo$stopCode==300) mig <- mig[1]
+          mig <- mig[which.min(sapply(mig, AIC))] 		
+      	}
+        z@models$migrant <- mig[[1]]
+      } else{
+        z@models$migrant <- NULL
+      }
+	    
       z@models$mixmig <- z@models$nomad <- NULL
       options(ow)
       return(z)

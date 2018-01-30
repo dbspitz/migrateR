@@ -188,35 +188,35 @@
 	  }
 	  modn <- names(mvmt@models)
 
-      # Models
-	  y1 <- mapply(fitted,mvmt@models)
-	  matplot(x1,y1, add = T, typ = "l", 
+      y1 <- mapply(fitted,mvmt@models)
+      if(length(x1)==length(y1)){  
+	# Models
+	matplot(x1,y1, add = T, typ = "l", 
 	    lty = p$lty, lwd = 2, col = p$col, xlim = xlim)	
 
-      # Legend
-      par(xpd=T)	
+        # Legend
+        par(xpd=T)	
 	  aicres <- sapply(mvmt@models, AIC)
 	  daic <- aicres - min(aicres)	
 	  yaxp <- par("yaxp")
 	  yleg <- yaxp[1] + 0.75 * (yaxp[2] - yaxp[1])
 
-      # Rank Legend on AIC?
-	  if(ranked){
-        aico   <- order(daic)
-        aicres <- aicres[aico]
-        p$col   <- p$col[aico]
-        modn   <- modn[aico]
-        daic   <- daic[aico]
-        p$lty   <- p$lty[aico]
-      }
-	  legend(390,yleg,title = as.expression(
-        substitute(A~B, list(A = as.name("Delta"),
+        # Rank Legend on AIC?
+	if(ranked){
+          aico   <- order(daic)
+          aicres <- aicres[aico]
+          p$col   <- p$col[aico]
+          modn   <- modn[aico]
+          daic   <- daic[aico]
+          p$lty   <- p$lty[aico]
+        }
+	legend(max(xlim)*1.07, yleg, title = as.expression(
+          substitute(A~B, list(A = as.name("Delta"),
           B = as.name("AIC")))
-        ),legend = paste(round(daic, 0), modn), lty = p$lty,
-          col = p$col, lwd = 2
-      )
+          ),legend = paste(round(daic, 0), modn), lty = p$lty,
+          col = p$col, lwd = 2)
+    }	      
       par(opar)
-
       invisible(attr(mvmt,"burst"))
     }  
     
