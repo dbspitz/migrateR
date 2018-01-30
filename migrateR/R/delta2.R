@@ -17,7 +17,8 @@
         out <- data.frame(delta2=NA, SE=NA)
         rownames(out)<- attr(v,"burst")
         return(out)
-      }names(x) <- c("delta2", "SE")
+      }
+      names(x) <- c("delta2", "SE")
       rownames(x) <- attr(v,"burst")
       return(x)
     }))
