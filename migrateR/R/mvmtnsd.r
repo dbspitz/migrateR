@@ -50,8 +50,8 @@
       	z@models$migrant$m$Rmat=function() {test}
       }				
 
-      p.res <- c("delta","kappa")
-      z@models$resident <- nls(nsd~(delta*(1-exp(kappa*dday2))),
+      p.res <- c("gamma","kappa")
+      z@models$resident <- nls(nsd~(gamma*(1-exp(kappa*dday2))),
         algorithm = "port",
         start = param["strt",p.res],
 		lower = param["lwr",p.res], 
