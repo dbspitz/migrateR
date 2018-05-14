@@ -61,10 +61,10 @@
         }
       }
       if(length(above <- which(param["strt",] > param["upr",])) > 0){
-      	param["upr",above] <- param["strt",above]
+      	param["strt",above] <- param["lwr", above] + diff(param[c(1,3), above])/2
       }
       if(length(below <- which(param["strt",] < param["lwr",])) > 0){
-      	param["lwr",above] <- param["strt",above]      	
+      	param["strt", below] <- param["lwr", below] + diff(param[c(1,3), below])/2
       }
       z@param <- param
       return(z)
