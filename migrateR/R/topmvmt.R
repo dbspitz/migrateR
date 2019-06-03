@@ -1,6 +1,6 @@
 
   ##----------------------------------------------------------------------------
-  topmvmt <- function(mvmt, omit = NA, a.rule = T, mdelta = NA, mrho = NA){
+  topmvmt <- function(mvmt, omit = NA, a.rule = T, mdelta = NA, mrho = NA, mdifdelta = NA){
     if (!grepl("mvmt",class(mvmt)[1])) 
       stop("mvmt should be of class \"mvmts\" or \"mvmt\"")
     if (!is.list(mvmt)){
@@ -18,7 +18,7 @@
       aicres <- sapply(x@models,AIC)
       aicres <- sapply(modn,function(y) as.numeric(aicres[y]))
       if (!is.na(omit[1])) {                    
-        omit <- match(omit,modn)
+        omit <- match(omit, modn)
         aicres[omit] <- NA
       }
       modm1 <- x@models[-length(x@models)]
@@ -29,7 +29,11 @@
       if (!is.na(mrho)){
           a <- which(lapply(modm1, function(z) coef(z)["rho"])<mrho)
         if (length(a)>0) aicres[a] <- NA
-      }	    
+      }
+      if (!is.na(aicres["mixmig"])&!is.na(mdifdelta)){
+        difdelta <- abs(delta2(x)$delta2 - coef(modm1$mixmig)["delta"])
+        if (difdelta < mdifdelta) aicres["mixmig"] <- NA
+      }
       tmod <- which.min(aicres)
       if(length(tmod)==0){
         b <- attr(x,"burst")
