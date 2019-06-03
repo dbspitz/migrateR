@@ -4,7 +4,7 @@
   ##----------------------------------------------------------------------------
   setClass("mvmt",slots = c(data = "data.frame", param = "data.frame", 
     models = "list" ), prototype = list(data = data.frame(), 
-      p.est = data.frame(), models = alist(
+      param = data.frame(), models = alist(
         disperser = nls(), mixmig = nls(),migrant = nls(),nomad = nls(),
         resident = nls()
       )
