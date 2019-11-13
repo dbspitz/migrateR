@@ -180,7 +180,7 @@
 	  points(x1, y1, cex = .5, col = "grey", xlim = xlim)
 	  if(max(xlim)>max(x1))  warning(cat("some x-values > xlim; n ="
 	                                     , sum(x1>max(xlim))
-	                                     , "points beyond plotting range")
+	                                     , "points beyond plotting range"))
 
       # Omit Models From Plot (?)
       omit <- match(omit,names(mvmt@models))
