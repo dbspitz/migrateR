@@ -5,7 +5,7 @@
   setClass("mvmt",slots = c(data = "data.frame", param = "data.frame", 
     models = "list" ), prototype = list(data = data.frame(), 
       param = data.frame(), models = alist(
-        disperser = nls(), mixmig = nls(),migrant = nls(),nomad = nls(),
+        disperser = nls(), migrant = nls(), mixmig = nls(), nomad = nls(),
         resident = nls()
       )
 	)
@@ -13,12 +13,12 @@
 
   setClass("mvmts", prototype = list("mvmt")) 
 
-  `[.mvmts` <- function(x,i,burst){
+  `[.mvmts` <- function(x, i, burst){
     if (!inherits(x,"mvmts")){
       stop("x should be of class \"mvmts\"")
     }
     if(sum(!missing(i))+(!missing(burst))!=1){
-      stop("non convenient subset")
+      stop("unable to execute subset: refer to either numeric indexing 'i' or named 'bursts'")
     }
     if (!missing(i)){
       x <- unclass(x)
@@ -164,7 +164,7 @@
       ylab <- c(nsd = expression("NSD " (Km^2)),
         rnsd =expression("rNSD " (Km^2)),
         elev = "Elevation (m)")[fam]
-        
+      
       plot(seq(1,365,length.out = length(y1)), y1, typ = "n",
         xlab = "Days", ylab = ylab, xaxt = "n", main = attr(mvmt,"burst"), 
         las=1, xlim=xlim, ...)    
@@ -178,7 +178,9 @@
       
       y1 <- y1[!mdata$cut]            
 	  points(x1, y1, cex = .5, col = "grey", xlim = xlim)
-
+	  if(max(xlim)>max(x1))  warning(cat("some x-values > xlim; n ="
+	                                     , sum(x1>max(xlim))
+	                                     , "points beyond plotting range")
 
       # Omit Models From Plot (?)
       omit <- match(omit,names(mvmt@models))
