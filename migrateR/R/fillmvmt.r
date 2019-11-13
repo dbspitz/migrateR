@@ -34,26 +34,27 @@
         dates[1] <- paste(d1lt$mon+1,d1lt$mday,sep="-")
         dates[6] <- difftime(strptime(paste(syr,dates[1],sep="-"),"%Y-%m-%d"), d1, units="days")
       } else {
-	    d1 <- strptime(paste(syr,stdt,sep="-"),"%Y-%m-%d")
+	      d1 <- strptime(paste(syr,stdt,sep="-"),"%Y-%m-%d")
         if(sum(z$date<d1)*2 > length(z$date)){
           dates["syr"] <- syr <- syr-1
           d1 <- strptime(paste(syr,stdt,sep="-"),"%Y-%m-%d")
         }
-	  }	 
+	    }	 
 
-	  dday <- as.numeric(difftime(z$date,d1,units="days"))
-	  attr(output,"dates") <- dates
+	    dday <- as.numeric(difftime(z$date,d1,units="days"))
+	    attr(output,"dates") <- dates
       infoloc <- attr(z,"infolocs")
       if(fam%in%names(infoloc)) { y <- infoloc[,fam] } else {
         if(is.na(rloc)) rloc <- 1
-	    y <- switch(sum(grepl("nsd",fam),grepl("3d",fam),grepl("std",fam)),
-		  ((z$x-z$x[rloc])**2+(z$y-z$y[rloc])**2)/1e6,			#	2 nsd (km)
-		  (infoloc$elev-infoloc$elev[rloc])**2/1e6		+
-			((z$x-z$x[rloc])**2+(z$y-z$y[rloc])**2)/1e6,		#	3	nsd3D (km)
-		  std(infoloc$elev-infoloc$elev[rloc])**2		+
-			std(z$x-z$x[rloc])**2+std(z$y-z$y[rloc])**2)		#	4 nsd3Dstd
+	      y <- switch(sum(grepl("nsd",fam),grepl("3d",fam),grepl("std",fam)),
+		    ((z$x-z$x[rloc])**2+(z$y-z$y[rloc])**2)/1e6,			#	2 nsd (km)
+		    (infoloc$elev-infoloc$elev[rloc])**2/1e6		+
+			  ((z$x-z$x[rloc])**2+(z$y-z$y[rloc])**2)/1e6,		#	3	nsd3D (km)
+		    std(infoloc$elev-infoloc$elev[rloc])**2		+
+			  std(z$x-z$x[rloc])**2+std(z$y-z$y[rloc])**2)		#	4 nsd3Dstd
       }
-      cutp <- z$date < scut | z$date > ecut
+      if(!"cut"%in%names(infoloc)) infoloc$cut <- F
+      cutp <- z$date < scut | z$date > ecut | infoloc$cut
       output@data <- data.frame(dday = dday, y = y, cut = cutp)      
       if(any(is.na(y))){
         n <- sum(is.na(y))
