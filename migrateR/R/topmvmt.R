@@ -1,13 +1,14 @@
-
+  
+  #  mnr = minimum difference between nomad and resident ending values
   ##----------------------------------------------------------------------------
-  topmvmt <- function(mvmt, omit = NA, a.rule = T, mdelta = NA, mrho = NA, mdifdelta = NA){
+  topmvmt <- function(mvmt, omit = NA, a.rule = T, mdelta = NA, mrho = NA, mdifdelta = NA, mnr = NA){
     if (!grepl("mvmt",class(mvmt)[1])) 
       stop("mvmt should be of class \"mvmts\" or \"mvmt\"")
     if (!is.list(mvmt)){
   	    mvmt <- list(mvmt)
-  	    class(mvmt) <- "mvmts"
+  	    class(mvmt) <- "mvmts" 
     } 
-    modn <- names(new("mvmt")@models)
+    modn <- names(new("mvmt")@models)  # names(mvmt[[1]]@models
     if (attr(mvmt[[1]],"fam") =="elev") modn <- modn[c(1,3,5)]
     if (!is.na(omit[1])&!all(omit%in%modn)){
       stop("'omit' includes invlaid model name(s)--may only omit: ",
@@ -21,18 +22,22 @@
         omit <- match(omit, modn)
         aicres[omit] <- NA
       }
-      modm1 <- x@models[-length(x@models)]
+      nonres <- x@models[-length(x@models)]
       if (!is.na(mdelta)){
-        a <- which(lapply(modm1, function(z) abs(coef(z)["delta"]))<mdelta)
+        a <- which(lapply(nonres, function(z) abs(coef(z)["delta"]))<mdelta)
           if (length(a)>0) aicres[a] <- NA
       }
       if (!is.na(mrho)){
-          a <- which(lapply(modm1, function(z) coef(z)["rho"])<mrho)
+          a <- which(lapply(nonres, function(z) coef(z)["rho"])<mrho)
         if (length(a)>0) aicres[a] <- NA
       }
       if (!is.na(aicres["mixmig"])&!is.na(mdifdelta)){
-        difdelta <- abs(delta2(x)$delta2 - coef(modm1$mixmig)["delta"])
+        difdelta <- abs(delta2(x)$delta2 - coef(nonres$mixmig)["delta"])
         if (difdelta < mdifdelta) aicres["mixmig"] <- NA
+      }
+      if(!is.na(aicres["nomad"])&!is.na(aicres["resident"])&!is.na(mnr)){
+        dnr <- abs(diff(sapply(x@models[c("resident", "nomad")], function(z) max(fitted(z)))))
+        if(dnr < mnr) aicres["nomad"] <- NA
       }
       tmod <- which.min(aicres)
       if(length(tmod)==0){
