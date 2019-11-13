@@ -2,7 +2,7 @@
 title: "Analysis of Animal Migration in R: <br/>
 the `migrateR` Package"
 author: "Derek Spitz"
-date: "`r Sys.Date()`"
+date: "2016-07-06"
 output: rmarkdown::html_vignette
 vignette: >
   %\VignetteIndexEntry{migrateR: Analysis of Animal Migration in R}
