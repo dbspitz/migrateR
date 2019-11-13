@@ -8,8 +8,8 @@
   	    mvmt <- list(mvmt)
   	    class(mvmt) <- "mvmts" 
     } 
-    modn <- names(new("mvmt")@models)  # names(mvmt[[1]]@models
-    if (attr(mvmt[[1]],"fam") =="elev") modn <- modn[c(1,3,5)]
+    modn <- names(new("mvmt")@models)
+    if (attr(mvmt[[1]],"fam") =="elev") modn <- modn[c(1,2,5)]
     if (!is.na(omit[1])&!all(omit%in%modn)){
       stop("'omit' includes invlaid model name(s)--may only omit: ",
       paste(modn,collapse=", "))
